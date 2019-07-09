@@ -9,12 +9,14 @@ def download_image(image_url, image_dir):
     file_name = image_url.split('/')[-1]
     file_path = os.path.join(image_dir, file_name)
     if os.path.exists(file_path):
-        return file_path
-
+    	verbose("[INFO]%s exists, skipping download" % file_name, v_flag)
+    	return file_path
+    
     response = requests.get(image_url)
     if response.status_code == 200:
         with open(file_path, 'wb') as file:
             file.write(response.content)
+        verbose("[INFO]Downloaded %s" % file_name, v_flag)
         return file_path
     else:
         print('[WARNING]Unable to download image, skipping...')
@@ -46,7 +48,7 @@ def generate_annotation(label, data):
     width = (xmax - xmin) / image_width
     height = (ymax - ymin) / image_height
 
-    return str(x_center) + ' ' +str(y_center) + ' ' + str(width) + ' ' + str(height) + '\n'
+    return ("%.6f %.6f %.6f %.6f\n"% (x_center, y_center, width, height))
 
 def convert_to_yolo_annotation():
     classes = []
@@ -81,21 +83,24 @@ def convert_to_yolo_annotation():
 
         train_txt.append(str(os.path.abspath(file_path)) + '\n')
 
-        with open(os.path.join(yolo_dir, 'train.txt'), 'w') as file:
-            file.writelines(train_txt)
-
         annotation_file = '.'.join(file_path.split('.')[:-1]) + '.txt'
 
         with open(annotation_file, 'w') as f:
             f.write(annotation)
+        verbose("[INFO]%s file generated." % annotation_file, v_flag)
+            
+    with open(os.path.join(yolo_dir, 'train.txt'), 'w') as file:
+    	file.writelines(train_txt)
+    verbose("[INFO]train.txt file generated.", v_flag)
                 
     return classes
 
 def generate_yolo_cfg_files(classes):
-
+	
     with open(os.path.join(yolo_dir, 'obj.names'), 'w') as file:
         for item in classes:
             file.write(item + '\n')
+    verbose("[INFO]obj.names file generated.", v_flag)
 
     with open(os.path.join(yolo_dir, 'obj.data'), 'w') as file:
         file.write('classes = %s\ntrain = %s\nnames = %s\nbackup = %s' %
@@ -105,6 +110,7 @@ def generate_yolo_cfg_files(classes):
                     str(os.path.join(os.path.abspath(yolo_dir), 'backup/'))
                    )
         )
+    verbose("[INFO]obj.data file generated.", v_flag)
 
     n_classes = len(classes)
 
@@ -117,6 +123,7 @@ def generate_yolo_cfg_files(classes):
             lines[i] = lines[i].replace('#FILTER#', str(n_filters))
             lines[i] = lines[i].replace('#CLASS#', str(n_classes))
         file.writelines(lines)
+    verbose("[INFO]yolov3.cfg file generated.", v_flag)
 
         
 def main():
@@ -126,27 +133,33 @@ def main():
     if not os.path.exists(dataturks_json_path):
         print('[ERROR]The specified json file does not exitst')
         return
-    '''if not os.path.isdir(yolo_dir):
+    if not os.path.isdir(yolo_dir):
         print('[ERROR]The directory %s does not exist' % os.path.abspath(yolo_dir))
-        return'''
-    #classes = convert_to_yolo_annotation()
-    classes = ['yolo', 'hello', 'moscow']
+        return
+    classes = convert_to_yolo_annotation()
     generate_yolo_cfg_files(classes)
     
 
 def arg_parser():
     parser = argparse.ArgumentParser(description = 'Converts Dataturks JSON format to yolo-darknet format.')
+    parser.add_argument('-v', help = 'Verbose output.', action = 'store_true')
     parser.add_argument('-d', '--dataturks_json_path', required = True, help = 'Path to the Dataturks JSON file.')
     parser.add_argument('-i', '--image_dir', required = True, help = 'Path to the directory where the images with annotations will be stored.')
     parser.add_argument('-y', '--yolo_dir', required = True, help = 'Path to the directory where the files for training YOLO will be stored.')
     return parser.parse_args()
+    
+def verbose(message, v_flag):
+	if v_flag == True:
+		print(message)
 
 if __name__ == '__main__':
     args = arg_parser()
     global dataturks_json_path
     global image_dir
     global yolo_dir
+    global v_flag
     dataturks_json_path = args.dataturks_json_path
     image_dir = args.image_dir
     yolo_dir = args.yolo_dir
+    v_flag = args.v
     main()

@@ -7,6 +7,7 @@ The ```convert.py``` script downloads the images and converts the annotations fr
 ```
 python3 convert.py -d <path/to/dataturks.json> -i <directory/to/save/downloaded/images/> -y <directory/to/save/yolo/config/files/>
 ```
+Note: ```-v``` flag can be used for detailed output.
 ## Output
 1. Downloaded images along with their annotations in the specified directory.
 2. YOLO config files ```train.txt, obj.names, obj.data, yolov3.cfg``` saved in the specified directory.
